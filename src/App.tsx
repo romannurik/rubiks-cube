@@ -82,6 +82,18 @@ function App() {
 
   return (
     <div className="root">
+      <ul className="legend">
+        <li><kbd>W</kbd> Rotate top</li>
+        <li><kbd>S</kbd> Rotate bottom</li>
+        <li><kbd>A</kbd> Rotate left</li>
+        <li><kbd>D</kbd> Rotate right</li>
+        <li><kbd>E</kbd> Rotate front</li>
+        <li><kbd>Q</kbd> Rotate back</li>
+        <li><small>Hold Shift for counterclockwise</small></li>
+        <li><kbd>Del</kbd> Reset</li>
+        <li><kbd>Enter</kbd> Solve</li>
+        <li><kbd>R</kbd> Randomize</li>
+      </ul>
       <Canvas shadows>
         <EffectComposer>
           {/* bad perf for DOF */}
@@ -168,16 +180,16 @@ function RubiksCube() {
     let listener = (ev: KeyboardEvent) => {
       let keys: Record<string, Face> = {
         'w': 'up',
-        'x': 'down',
-        's': 'front',
-        'z': 'back',
+        's': 'down',
+        'e': 'front',
+        'q': 'back',
         'a': 'left',
         'd': 'right',
       };
-      if (ev.key === 'r') {
+      if (ev.key === 'Delete' || ev.key === 'Backspace') {
         setCube(new Cube());
         setRotationQueue([]);
-      } else if (ev.key.toLowerCase() == '/') {
+      } else if (ev.key == 'Enter') {
         if (cube.isSolved()) {
           console.log('already solved');
           return;
@@ -185,7 +197,7 @@ function RubiksCube() {
         Cube.initSolver();
         let rotations = moveToRotations(cube.solve(), true);
         setRotationQueue(rotations);
-      } else if (ev.key.toLowerCase() == '.') {
+      } else if (ev.key.toLowerCase() == 'r') {
         let cube = new Cube();
         cube.randomize();
         setCube(cube);

@@ -9,3 +9,34 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+.root > * {
+  grid-area: 1 / 1;
+}
+
+.legend {
+  margin: 16px 24px;
+  list-style: none;
+  font-size: 12px;
+  padding: 0;
+}
+
+.legend li {
+  padding: 0;
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  color: rgba(255 255 255 / 60%);
+}
+
+.legend li kbd {
+  background-color: rgba(255 255 255 / 25%);
+  color: #fff;
+  padding: 0 4px;
+  border-radius: 2px;
+  margin-right: 8px;
+}
+
+.legend small {
+  color: rgba(255 255 255 / 40%);
+}
