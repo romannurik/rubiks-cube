@@ -19,6 +19,9 @@
   list-style: none;
   font-size: 12px;
   padding: 0;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
 }
 
 .legend li {

@@ -10,6 +10,7 @@ import { MyRoundedBox } from './MyRoundedBox';
 
 type Color = 'white' | 'yellow' | 'green' | 'blue' | 'orange' | 'red';
 type Face = 'up' | 'down' | 'front' | 'back' | 'left' | 'right';
+type FrontFace = 'green' | 'red' | 'blue' | 'orange';
 
 const HEX_COLORS: Record<Color, string> = {
   green: '#388E3C',
@@ -78,6 +79,7 @@ function App() {
   let [lightPosition, setLightPosition] = useState<THREE.Vector3>(
     new THREE.Vector3(1, 1, 1).setLength(15)
   );
+  let [visibleFrontFace, setVisibleFrontFace] = useState<FrontFace>('green');
   let cameraRef = useRef<THREE.PerspectiveCamera>(null);
 
   return (
@@ -96,14 +98,12 @@ function App() {
       </ul>
       <Canvas shadows>
         <EffectComposer>
-          {/* bad perf for DOF */}
+          {/* depth of field - bad performance, and can't quite get it working anyway */}
+          {/* https://codesandbox.io/p/sandbox/r3f-stencil-buffer-forked-tgs382 */}
           {/* <DepthOfField
-            focusDistance={0}
-            focalLength={0.02}
-            bokehScale={1}
-            height={480}
-          />
-          <Autofocus /> */}
+            target={[1.5, 1.5, 1.5]}
+            bokehScale={20}
+            height={1000} /> */}
           <Bloom
             luminanceThreshold={-1}
             luminanceSmoothing={0}
@@ -120,22 +120,42 @@ function App() {
         <ambientLight intensity={Math.PI / 4} />
         <directionalLight position={lightPosition} shadow-mapSize={[2024, 2024]} />
         <spotLight position={lightPosition} angle={0.13} penumbra={1} decay={0} intensity={Math.PI} />
+        {/* <color attach="background" args={['#111']} /> */}
         <PerspectiveCamera
           ref={cameraRef}
           makeDefault
+          // near={0.1}
+          // far={100}
           fov={50}
-          position={[10, 10, 10]}
+          position={[5, 5, 5]}
         />
         <OrbitControls
+          makeDefault
+          maxDistance={25}
+          minDistance={5}
           enablePan={false}
           enableDamping={true}
           dampingFactor={0.25}
           onChange={() => {
             let pos = new THREE.Vector3().copy(cameraRef.current!.position).setLength(15);
             setLightPosition(pos);
-          }}
-          makeDefault />
-        <RubiksCube />
+            let rotation = Math.atan2(pos.x, pos.z) * 180 / Math.PI;
+            rotation = (rotation + 360) % 360;
+            let visibleFrontFace: FrontFace = 'green';
+            if (rotation < 90) {
+              visibleFrontFace = 'green';
+            } else if (rotation < 180) {
+              visibleFrontFace = 'red';
+            } else if (rotation < 270) {
+              visibleFrontFace = 'blue';
+            } else {
+              visibleFrontFace = 'orange';
+            }
+            setVisibleFrontFace(visibleFrontFace);
+          }} />
+        <RubiksCube
+          visibleFrontFace={visibleFrontFace}
+        />
       </Canvas>
     </div>
   )
@@ -143,7 +163,9 @@ function App() {
 
 const animEase = BezierEasing(0.7, 1.33, .7, 1);
 
-function RubiksCube() {
+function RubiksCube({ visibleFrontFace }: {
+  visibleFrontFace: FrontFace
+}) {
   let [cube, setCube] = useState(new Cube());
   let [rotationQueue, setRotationQueue] = useState<Rotation[]>([]);
   let [animationTime, setAnimationTime] = useState(0);
@@ -203,12 +225,13 @@ function RubiksCube() {
         setCube(cube);
         setRotationQueue([]);
       } else if (ev.key.toLowerCase() in keys) {
-        setRotationQueue(q => [...q, { face: keys[ev.key.toLowerCase()], clockwise: !ev.shiftKey }]);
+        const face = mapVisibleFaceToFace(keys[ev.key.toLowerCase()], visibleFrontFace);
+        setRotationQueue(q => [...q, { face, clockwise: !ev.shiftKey }]);
       }
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, [rotationQueue]);
+  }, [rotationQueue, visibleFrontFace]);
 
   let s: string = cube.asString();
   const C = {
@@ -255,16 +278,19 @@ function RubiksCube() {
 }
 
 function Cubelet({ up, down, front, back, left, right, ...props }: Omit<ThreeElements['mesh'], 'up'> & Partial<Record<Face, Color>>) {
-  return (
+  // const FaceMaterial = ({ attach, color }: any) => <meshStandardMaterial attach={attach} color={color} />;
+  const FaceMaterial = ({ attach, color }: any) => <meshPhysicalMaterial attach={attach} color={color} roughness={0.6} />;
+
+  return <>
     <MyRoundedBox args={[1.08, 1.08, 1.08] as any} segments={4} radius={0.2} {...props}>
-      <meshStandardMaterial attach="material-0" color={front !== undefined ? HEX_COLORS[front] : '#111'} />
-      <meshStandardMaterial attach="material-1" color={back !== undefined ? HEX_COLORS[back] : '#111'} />
-      <meshStandardMaterial attach="material-2" color={up !== undefined ? HEX_COLORS[up] : '#111'} />
-      <meshStandardMaterial attach="material-3" color={down !== undefined ? HEX_COLORS[down] : '#111'} />
-      <meshStandardMaterial attach="material-4" color={left !== undefined ? HEX_COLORS[left] : '#111'} />
-      <meshStandardMaterial attach="material-5" color={right !== undefined ? HEX_COLORS[right] : '#111'} />
+      <FaceMaterial attach="material-0" color={front !== undefined ? HEX_COLORS[front] : '#111'} />
+      <FaceMaterial attach="material-1" color={back !== undefined ? HEX_COLORS[back] : '#111'} />
+      <FaceMaterial attach="material-2" color={up !== undefined ? HEX_COLORS[up] : '#111'} />
+      <FaceMaterial attach="material-3" color={down !== undefined ? HEX_COLORS[down] : '#111'} />
+      <FaceMaterial attach="material-4" color={left !== undefined ? HEX_COLORS[left] : '#111'} />
+      <FaceMaterial attach="material-5" color={right !== undefined ? HEX_COLORS[right] : '#111'} />
     </MyRoundedBox>
-  )
+  </>
 }
 
 function moveToRotations(move: string, forceShow?: boolean): Rotation[] {
@@ -285,6 +311,21 @@ function moveToRotations(move: string, forceShow?: boolean): Rotation[] {
     }
   }
   return rotations;
+}
+
+/**
+ * Maps a user-visible face (e.g. what's currently the "front" face) to
+ * a face in the internal cube representation.
+ */
+function mapVisibleFaceToFace(face: Face, visibleFrontFace: FrontFace): Face {
+  if (face === 'up' || face === 'down') return face;
+  const faceClockwiseOrder: Face[] = ['front', 'left', 'back', 'right'];
+  const visClockwiseOrder: FrontFace[] = ['green', 'orange', 'blue', 'red'];
+  face = faceClockwiseOrder[(
+    visClockwiseOrder.indexOf(visibleFrontFace) +
+    faceClockwiseOrder.indexOf(face)
+  ) % faceClockwiseOrder.length];
+  return face;
 }
 
 export default App;
